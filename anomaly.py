@@ -4,7 +4,7 @@ def compute_score(values, window=36):
     score = ((values - prev_mean) / prev_std).abs()
     return score
 
-def detect_alarms(score, threshold=3.4):
+def detect_alarms(score, threshold=3400.0):
     return (score > threshold).astype(int)
 
 def evaluate(alarm, labels, times, windows):
