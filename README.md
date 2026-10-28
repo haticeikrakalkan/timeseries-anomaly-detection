@@ -52,16 +52,16 @@ extremes instead of anomalies (394 alarms, only 55 inside windows).
 
 ## Project structure
 
-| File | Purpose |
-|---|---|
+| File                                 | Purpose |
+|--------------------------------------|---|
 | `01_exploratory_data_analysis.ipynb` | Full analysis |
-| `anomaly.py` | `compute_score`, `detect_alarms`, `detect_isolation_forest`, `evaluate` |
-| `main.py` | FastAPI app (`GET /`, `POST /detect`) |
-| `test_model.py` | pytest tests (5 tests) |
-| `run_experiments.py` | Logs the 48-setting grid to MLflow |
-| `Dockerfile`, `.dockerignore` | Container image for the API |
-| `.github/workflows/ci.yml` | GitHub Actions: runs the tests on every push |
-| `ec2_cpu_utilization_5f5533.csv` | Data |
+| `anomaly.py`                         | `compute_score`, `detect_alarms`, `detect_isolation_forest`, `evaluate` |
+| `main.py`                            | FastAPI app (`GET /`, `POST /detect`) |
+| `test_anomaly.py`                    | pytest tests (5 tests) |
+| `run_experiments.py`                 | Logs the 48-setting grid to MLflow |
+| `Dockerfile`, `.dockerignore`        | Container image for the API |
+| `.github/workflows/ci.yml`           | GitHub Actions: runs the tests on every push |
+| `ec2_cpu_utilization_5f5533.csv`     | Data |
 
 ## API
 
