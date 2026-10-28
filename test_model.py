@@ -1,7 +1,9 @@
-from anomaly import compute_score, detect_alarms, evaluate
+from anomaly import compute_score, detect_alarms, evaluate, detect_isolation_forest
 import pandas as pd
 from fastapi.testclient import TestClient
 from main import app
+import numpy as np
+
 
 client = TestClient(app)
 
@@ -39,3 +41,13 @@ def test_detect_short_series_warns():
     assert response.status_code == 200
     assert response.json()["alarms"] == []
     assert "warning" in response.json()
+
+def test_isolation_forest_flags_outlier():
+    rng = np.random.default_rng(0)
+    X_train = pd.DataFrame({"score": rng.normal(1, 0.5, 200), "value": rng.normal(50, 5, 200)})
+    X_test = pd.DataFrame({"score": rng.normal(1, 0.5, 50), "value": rng.normal(50, 5, 50)})
+    X_test.loc[10, ["score", "value"]] = [50, 1000]
+    alarms = detect_isolation_forest(X_train, X_test)
+    assert alarms.index.equals(X_test.index)
+    assert set(alarms.unique()) <= {0, 1}
+    assert alarms[10] == 1
