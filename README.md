@@ -1,5 +1,11 @@
 # Time Series Anomaly Detection (NAB, unsupervised)
 
+![CI](https://github.com/haticeikrakalkan/timeseries-anomaly-detection/actions/workflows/ci.yml/badge.svg)
+
+**Live API:** https://anomaly-api-ttnm.onrender.com (Swagger UI: `/docs`)
+
+> The API runs on Render's free plan. After a period of inactivity it spins down, so the first request can take around 30 seconds.
+
 ## Goal
 Detect anomalies in a server CPU utilization series without using labels for training.
 Labels are used only afterwards to check the results.
@@ -44,6 +50,67 @@ Robustness grid (48 runs): every run caught both windows. The difference is in f
 An early Isolation Forest trained on the whole series with `value` only flagged level
 extremes instead of anomalies (394 alarms, only 55 inside windows).
 
+## Project structure
+
+| File | Purpose |
+|---|---|
+| `01_exploratory_data_analysis.ipynb` | Full analysis |
+| `anomaly.py` | `compute_score`, `detect_alarms`, `detect_isolation_forest`, `evaluate` |
+| `main.py` | FastAPI app (`GET /`, `POST /detect`) |
+| `test_model.py` | pytest tests (5 tests) |
+| `run_experiments.py` | Logs the 48-setting grid to MLflow |
+| `Dockerfile`, `.dockerignore` | Container image for the API |
+| `.github/workflows/ci.yml` | GitHub Actions: runs the tests on every push |
+| `ec2_cpu_utilization_5f5533.csv` | Data |
+
+## API
+
+`POST /detect` takes a list of numbers and returns the indices of the alarms. The score needs a 36-value window, so at least 37 values are required.
+
+```bash
+curl -X POST https://anomaly-api-ttnm.onrender.com/detect \
+  -H "Content-Type: application/json" \
+  -d '{"values": [10, 11, 10, 11, ...]}'
+```
+
+Response: `{"alarms": [36]}`. If fewer than 37 values are sent: `{"alarms": [], "warning": "At least 37 values are required"}`.
+
+## Run locally
+
+```bash
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+## Tests
+
+```bash
+pytest -q
+```
+
+The tests cover the deviation score, the `evaluate` function, Isolation Forest and two API scenarios (spike detection, short series). CI runs them on every push to `main`.
+
+## Docker
+
+```bash
+docker build -t anomaly-api .
+docker run -p 8000:8000 anomaly-api
+```
+
+The live service is built from the same Dockerfile on Render and redeploys on every push to `main`.
+
+## Experiment tracking (MLflow)
+
+MLflow is not part of the API image (to keep it small); it is only needed for experiments:
+
+```bash
+pip install mlflow
+python run_experiments.py
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+Open `http://127.0.0.1:5000` to compare the 48 runs by parameters (`n_estimators`, `contamination`, `random_state`) and metrics (`alarm`, `true_alarm`, `false_alarm`, `windows_caught`).
+
 ## Limitations
 - One file and two anomaly windows only. Results should not be generalized.
 - The 3.4 threshold and the contamination range were chosen after looking at the labels,
@@ -52,11 +119,11 @@ extremes instead of anomalies (394 alarms, only 55 inside windows).
   fully independent.
 - Supervised learning was not used: two windows are too few to train and test fairly.
 - GridSearchCV was not used, since tuning on so few labels would just fit the labels.
+- If the previous 36 values are all identical, the standard deviation is 0 and the score
+  becomes infinite. Rare in real CPU data, but an edge case.
+- The tests emit a deprecation warning about using `httpx` with `starlette.testclient`.
+  It does not affect functionality for now.
 
 ## Next steps
 - Repeat on more NAB files.
-- Refactor the notebook into tested Python modules, then add an API, Docker, CI and MLflow tracking.
-
-## Files
-- `01_exploratory_data_analysis.ipynb`: full analysis
-- `ec2_cpu_utilization_5f5533.csv`: data
+- Split the notebook into smaller ones.
